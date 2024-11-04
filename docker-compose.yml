@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  snake-game:
+    build: .
+    container_name: snake-game
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./src/main/resources/static:/app/BOOT-INF/classes/static
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SERVER_PORT=8080
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/game"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
