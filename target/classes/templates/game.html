@@ -2,26 +2,40 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <title>Snake Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             font-family: 'Arial', sans-serif;
+            touch-action: none;
+            color: #4ecca3;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
         }
         canvas {
             border: 3px solid #4ecca3;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(78, 204, 163, 0.3);
         }
-        #score {
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin: 10px 0;
+        }
+        #score, #highScore, #playerName {
             color: #4ecca3;
-            font-size: 28px;
-            margin: 20px 0;
+            font-size: 24px;
             text-shadow: 0 0 10px rgba(78, 204, 163, 0.5);
         }
         #gameOver {
@@ -32,15 +46,16 @@
             text-shadow: 0 0 10px rgba(255, 46, 99, 0.5);
             animation: pulse 1.5s infinite;
         }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
+        .menu {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px 0;
+            width: 300px;
         }
-        #restartButton {
-            display: none;
+        .button {
             padding: 12px 24px;
-            font-size: 20px;
+            font-size: 18px;
             background: #4ecca3;
             color: #1a1a2e;
             border: none;
@@ -49,31 +64,244 @@
             transition: all 0.3s ease;
             box-shadow: 0 0 15px rgba(78, 204, 163, 0.4);
         }
-        #restartButton:hover {
+        .button:hover {
             transform: scale(1.05);
             box-shadow: 0 0 20px rgba(78, 204, 163, 0.6);
+        }
+        #nicknameInput {
+            padding: 12px;
+            font-size: 18px;
+            border-radius: 25px;
+            border: 2px solid #4ecca3;
+            background: transparent;
+            color: #4ecca3;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #nicknameInput::placeholder {
+            color: rgba(78, 204, 163, 0.5);
+        }
+        #leaderboard {
+            background: rgba(26, 26, 46, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            width: 300px;
+            margin-top: 20px;
+        }
+        .leaderboard-title {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #4ecca3;
+        }
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(78, 204, 163, 0.3);
+        }
+        #mobileControls {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            gap: 10px;
+        }
+        .control-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(78, 204, 163, 0.3);
+            border: 2px solid #4ecca3;
+            border-radius: 50%;
+            color: #4ecca3;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        #pauseOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 26, 46, 0.8);
+            justify-content: center;
+            align-items: center;
+            font-size: 48px;
+            color: #4ecca3;
+            z-index: 100;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        @keyframes snakeMove {
+            0% { transform: scale(0.95); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(0.95); }
+        }
+        @media (max-width: 768px) {
+            canvas {
+                max-width: 90vw;
+                max-height: 90vw;
+            }
+            #mobileControls {
+                display: flex;
+            }
+            .menu {
+                width: 90vw;
+            }
+            #leaderboard {
+                width: 90vw;
+            }
         }
     </style>
 </head>
 <body>
-    <div id="score">Score: 0</div>
-    <canvas id="gameCanvas" width="600" height="600"></canvas>
-    <div id="gameOver">Game Over!</div>
-    <button id="restartButton">Play Again</button>
+    <div class="container">
+        <div id="welcomeScreen" class="menu">
+            <h1>Snake Game</h1>
+            <input type="text" id="nicknameInput" placeholder="Enter your nickname" maxlength="15">
+            <select id="difficultySelect" class="button">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+            <button id="startButton" class="button">Start Game</button>
+        </div>
 
-    <script>
+        <div id="gameScreen" style="display: none;">
+            <div class="stats">
+                <div id="playerName"></div>
+                <div id="score">Score: 0</div>
+                <div id="highScore">High Score: 0</div>
+            </div>
+            <canvas id="gameCanvas" width="600" height="600"></canvas>
+            <div id="gameOver">Game Over!</div>
+            <button id="restartButton" class="button" style="display: none;">Play Again</button>
+        </div>
+
+        <div id="leaderboard">
+            <div class="leaderboard-title">Leaderboard</div>
+            <div id="leaderboardEntries"></div>
+        </div>
+
+        <div id="mobileControls">
+            <div class="control-button" id="leftBtn">←</div>
+            <div>
+                <div class="control-button" id="upBtn">↑</div>
+                <div class="control-button" id="downBtn">↓</div>
+            </div>
+            <div class="control-button" id="rightBtn">→</div>
+        </div>
+    </div>
+    <div id="pauseOverlay">PAUSED</div>
+
+<script>
+        class LeaderboardManager {
+            constructor() {
+                this.scores = new Map(); // Use Map to store one score per player
+                this.loadScores();
+            }
+
+            async loadScores() {
+                try {
+                    const response = await fetch('/leaderboard.json');
+                    const data = await response.json();
+                    // Convert array to Map, keeping only highest score per player
+                    this.scores.clear();
+                    data.scores.forEach(entry => {
+                        const existingScore = this.scores.get(entry.nickname);
+                        if (!existingScore || entry.score > existingScore.score) {
+                            this.scores.set(entry.nickname, entry);
+                        }
+                    });
+                    this.updateLeaderboardDisplay();
+                } catch (error) {
+                    console.error('Error loading leaderboard:', error);
+                    this.scores.clear();
+                }
+            }
+
+            async saveScore(nickname, score, difficulty) {
+                const existingScore = this.scores.get(nickname);
+                // Only update if new score is higher
+                if (!existingScore || score > existingScore.score) {
+                    this.scores.set(nickname, {
+                        nickname,
+                        score,
+                        difficulty,
+                        date: new Date().toISOString()
+                    });
+                }
+                
+                // Convert Map to array and sort
+                const scoresArray = Array.from(this.scores.values())
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 10); // Keep top 10
+
+                this.updateLeaderboardDisplay();
+                
+                try {
+                    await fetch('/leaderboard.json', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ scores: scoresArray }),
+                    });
+                } catch (error) {
+                    console.error('Error saving leaderboard:', error);
+                }
+            }
+
+            updateLeaderboardDisplay() {
+                const container = document.getElementById('leaderboardEntries');
+                container.innerHTML = '';
+                
+                // Convert Map to array, sort, and display
+                Array.from(this.scores.values())
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 10)
+                    .forEach((entry, index) => {
+                        const div = document.createElement('div');
+                        div.className = 'leaderboard-entry';
+                        div.innerHTML = `
+                            <span>${index + 1}. ${entry.nickname}</span>
+                            <span>${entry.score} (${entry.difficulty})</span>
+                        `;
+                        container.appendChild(div);
+                    });
+            }
+        }
+
         class Tile {
             constructor(x, y) {
                 this.x = x;
                 this.y = y;
+                this.scale = 1;
+                this.targetScale = 1;
             }
         }
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('highScore');
         const gameOverElement = document.getElementById('gameOver');
         const restartButton = document.getElementById('restartButton');
+        const startButton = document.getElementById('startButton');
+        const difficultySelect = document.getElementById('difficultySelect');
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        const nicknameInput = document.getElementById('nicknameInput');
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const playerNameDisplay = document.getElementById('playerName');
 
         const tileSize = 25;
         const boardWidth = canvas.width;
@@ -85,10 +313,47 @@
         let velocityY;
         let gameLoop;
         let score;
+        let highScore = 0;
         let gameOver;
+        let isPaused = false;
+        let gameSpeed;
+        let foodAnimation = 0;
+        let playerNickname = '';
+        let leaderboardManager;
+
+        // Sound effects
+        const eatSound = new Audio('data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTtvAAA=');
+        const gameOverSound = new Audio('data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTtvAAA=');
+
+        eatSound.volume = 0.3;
+        gameOverSound.volume = 0.3;
+
+        // Initialize leaderboard
+        leaderboardManager = new LeaderboardManager();
+
+        function setDifficulty() {
+            const difficulty = difficultySelect.value;
+            switch(difficulty) {
+                case 'easy':
+                    gameSpeed = 150;
+                    break;
+                case 'medium':
+                    gameSpeed = 100;
+                    break;
+                case 'hard':
+                    gameSpeed = 70;
+                    break;
+            }
+        }
 
         function drawApple(x, y) {
             ctx.save();
+            if (foodAnimation > 0) {
+                ctx.translate(x * tileSize + tileSize/2, y * tileSize + tileSize/2);
+                ctx.scale(1 + foodAnimation * 0.3, 1 + foodAnimation * 0.3);
+                ctx.translate(-(x * tileSize + tileSize/2), -(y * tileSize + tileSize/2));
+                foodAnimation = Math.max(0, foodAnimation - 0.1);
+            }
             ctx.fillStyle = '#ff2e63';
             ctx.beginPath();
             ctx.arc(x * tileSize + tileSize/2, y * tileSize + tileSize/2, tileSize/2 - 2, 0, Math.PI * 2);
@@ -101,8 +366,12 @@
             ctx.restore();
         }
 
-        function drawSnakeSegment(x, y, isHead) {
+        function drawSnakeSegment(x, y, isHead, scale) {
             ctx.save();
+            ctx.translate(x * tileSize + tileSize/2, y * tileSize + tileSize/2);
+            ctx.scale(scale, scale);
+            ctx.translate(-(x * tileSize + tileSize/2), -(y * tileSize + tileSize/2));
+
             if (isHead) {
                 // Snake head
                 ctx.fillStyle = '#4ecca3';
@@ -144,13 +413,31 @@
             ctx.restore();
         }
 
+        function startGame() {
+            playerNickname = nicknameInput.value.trim();
+            if (!playerNickname) {
+                alert('Please enter a nickname!');
+                return;
+            }
+            
+            welcomeScreen.style.display = 'none';
+            gameScreen.style.display = 'block';
+            playerNameDisplay.textContent = playerNickname;
+            
+            initGame();
+        }
+
         function initGame() {
-            snake = [new Tile(5, 5)];
+            snake = Array(3).fill().map((_, i) => new Tile(5 - i, 5));
             food = new Tile(10, 10);
             velocityX = 1;
             velocityY = 0;
             score = 0;
             gameOver = false;
+            isPaused = false;
+            foodAnimation = 0;
+            
+            setDifficulty();
             
             gameOverElement.style.display = 'none';
             restartButton.style.display = 'none';
@@ -158,7 +445,7 @@
             
             placeFood();
             if (gameLoop) clearInterval(gameLoop);
-            gameLoop = setInterval(update, 100);
+            gameLoop = setInterval(update, gameSpeed);
         }
 
         function placeFood() {
@@ -175,18 +462,28 @@
         }
 
         function update() {
-            if (gameOver) return;
+            if (gameOver || isPaused) return;
+
+            // Update snake scales
+            snake.forEach(segment => {
+                segment.scale += (segment.targetScale - segment.scale) * 0.2;
+            });
 
             // Move snake body
             for (let i = snake.length - 1; i > 0; i--) {
                 snake[i] = new Tile(snake[i-1].x, snake[i-1].y);
+                snake[i].scale = snake[i-1].scale;
+                snake[i].targetScale = 1;
             }
 
             // Move snake head
-            snake[0] = new Tile(
+            const newHead = new Tile(
                 snake[0].x + velocityX,
                 snake[0].y + velocityY
             );
+            newHead.scale = snake[0].scale;
+            newHead.targetScale = 1.2; // Head slightly larger
+            snake[0] = newHead;
 
             // Check wall collision
             if (snake[0].x < 0 || snake[0].x >= boardWidth/tileSize ||
@@ -205,10 +502,31 @@
 
             // Check food collision
             if (snake[0].x === food.x && snake[0].y === food.y) {
-                snake.push(new Tile(food.x, food.y));
+                const tail = snake[snake.length - 1];
+                const newTail = new Tile(tail.x, tail.y);
+                newTail.scale = 0.5; // Start small
+                newTail.targetScale = 1; // Grow to normal size
+                snake.push(newTail);
+                
                 score++;
+                foodAnimation = 1;
+                eatSound.play().catch(() => {});
                 scoreElement.textContent = `Score: ${score}`;
+                if (score > highScore) {
+                    highScore = score;
+                    highScoreElement.textContent = `High Score: ${highScore}`;
+                }
                 placeFood();
+
+                // Add wave effect through snake
+                snake.forEach((segment, index) => {
+                    setTimeout(() => {
+                        segment.targetScale = 1.2;
+                        setTimeout(() => {
+                            segment.targetScale = 1;
+                        }, 100);
+                    }, index * 50);
+                });
             }
 
             draw();
@@ -238,19 +556,35 @@
 
             // Draw snake
             for (let i = snake.length - 1; i >= 0; i--) {
-                drawSnakeSegment(snake[i].x, snake[i].y, i === 0);
+                drawSnakeSegment(snake[i].x, snake[i].y, i === 0, snake[i].scale);
             }
         }
 
         function endGame() {
             gameOver = true;
             clearInterval(gameLoop);
+            gameOverSound.play().catch(() => {});
             gameOverElement.style.display = 'block';
             restartButton.style.display = 'block';
+            
+            // Save score to leaderboard
+            leaderboardManager.saveScore(playerNickname, score, difficultySelect.value);
         }
 
-        document.addEventListener('keydown', (e) => {
+        function togglePause() {
+            isPaused = !isPaused;
+            pauseOverlay.style.display = isPaused ? 'flex' : 'none';
+        }
+
+        function handleKeydown(e) {
             if (gameOver) return;
+
+            if (e.key === 'p' || e.key === 'P') {
+                togglePause();
+                return;
+            }
+
+            if (isPaused) return;
 
             switch(e.key) {
                 case 'ArrowUp':
@@ -278,12 +612,47 @@
                     }
                     break;
             }
+        }
+
+        // Mobile controls
+        document.getElementById('upBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (velocityY !== 1) {
+                velocityX = 0;
+                velocityY = -1;
+            }
         });
 
-        restartButton.addEventListener('click', initGame);
+        document.getElementById('downBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (velocityY !== -1) {
+                velocityX = 0;
+                velocityY = 1;
+            }
+        });
 
-        // Start the game
-        initGame();
+        document.getElementById('leftBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (velocityX !== 1) {
+                velocityX = -1;
+                velocityY = 0;
+            }
+        });
+
+        document.getElementById('rightBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (velocityX !== -1) {
+                velocityX = 1;
+                velocityY = 0;
+            }
+        });
+
+        document.addEventListener('keydown', handleKeydown);
+        restartButton.addEventListener('click', initGame);
+        startButton.addEventListener('click', startGame);
+
+        // Initial draw of empty board
+        draw();
     </script>
 </body>
 </html>
