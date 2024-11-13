@@ -26,10 +26,6 @@ services:
       resources:
         limits:
           memory: 768M
-          cpus: '1'
-        reservations:
-          memory: 256M
-          cpus: '0.5'
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/game"]

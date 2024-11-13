@@ -1,5 +1,5 @@
 # Stage 1: Build environment
-FROM maven:3.8.4-openjdk-17-slim as builder
+FROM maven:3.8.4-openjdk-17 AS builder
 
 # Set working directory
 WORKDIR /build
@@ -22,7 +22,7 @@ COPY src src
 RUN --mount=type=cache,target=/root/.m2 ./mvnw package -DskipTests -B
 
 # Stage 2: Runtime environment
-FROM eclipse-temurin:17-jre-slim
+FROM openjdk:17-slim
 
 # Set working directory
 WORKDIR /app
