@@ -5,25 +5,31 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
-      args:
-        - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
     container_name: snake-game
     ports:
       - "8080:8080"
     volumes:
-      - snake-data:/app/BOOT-INF/classes/static
+      - type: volume
+        source: snake-data
+        target: /app/logs
+      - type: bind
+        source: ./src/main/resources/static
+        target: /app/BOOT-INF/classes/static
+        read_only: true
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       - SERVER_PORT=8080
       - TZ=UTC
-      # JVM tuning
-      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -XX:+UseStringDeduplication
+      # JVM and GC tuning
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -XX:+UseStringDeduplication -Xms256m -Xmx512m
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 768M
+          cpus: '1'
         reservations:
           memory: 256M
+          cpus: '0.5'
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/game"]
@@ -36,8 +42,8 @@ services:
     logging:
       driver: "json-file"
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: "20m"
+        max-file: "5"
 
 volumes:
   snake-data:

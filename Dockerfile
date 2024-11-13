@@ -1,44 +1,56 @@
-# Stage 1: Download and cache Maven dependencies
-FROM eclipse-temurin:17-jdk-alpine as dependencies
-WORKDIR /workspace/app
-COPY pom.xml .
+# Stage 1: Build environment
+FROM maven:3.8.4-openjdk-17-slim as builder
+
+# Set working directory
+WORKDIR /build
+
+# Copy Maven files first for better layer caching
 COPY mvnw .
 COPY .mvn .mvn
+COPY pom.xml .
+
+# Make mvnw executable
 RUN chmod +x mvnw
-# Download dependencies only (this layer will be cached)
-RUN ./mvnw dependency:go-offline -B
 
-# Stage 2: Build the application
-FROM dependencies as build
+# Download dependencies (this layer will be cached)
+RUN --mount=type=cache,target=/root/.m2 ./mvnw dependency:go-offline -B
+
+# Copy source code
 COPY src src
-# Build with cached dependencies
-RUN ./mvnw package -DskipTests -B \
-    && mkdir -p target/extracted \
-    && java -Djarmode=layertools -jar target/*.jar extract --destination target/extracted
 
-# Stage 3: Create optimized runtime image
-FROM eclipse-temurin:17-jre-alpine as runtime
+# Build the application
+RUN --mount=type=cache,target=/root/.m2 ./mvnw package -DskipTests -B
+
+# Stage 2: Runtime environment
+FROM eclipse-temurin:17-jre-slim
+
+# Set working directory
 WORKDIR /app
 
-# Install necessary runtime packages
-RUN apk add --no-cache tzdata curl
+# Install curl for healthcheck
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
 
-# Create non-root user for security
-RUN addgroup -S spring && adduser -S spring -G spring
+# Create non-root user
+RUN groupadd -r spring && useradd -r -g spring spring
+
+# Set ownership and permissions
+RUN mkdir -p /app/logs && \
+    chown -R spring:spring /app
+
+# Copy the built artifact from builder stage
+COPY --from=builder --chown=spring:spring /build/target/*.jar app.jar
+
+# Switch to non-root user
 USER spring:spring
 
-# Copy layers from build stage in the correct order for better caching
-COPY --from=build --chown=spring:spring /workspace/app/target/extracted/dependencies/ ./
-COPY --from=build --chown=spring:spring /workspace/app/target/extracted/spring-boot-loader/ ./
-COPY --from=build --chown=spring:spring /workspace/app/target/extracted/snapshot-dependencies/ ./
-COPY --from=build --chown=spring:spring /workspace/app/target/extracted/application/ ./
-
-# Runtime configuration
-ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
-
-# Health check
+# Set healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8080/game || exit 1
 
-# Start the application with optimized JVM settings
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS org.springframework.boot.loader.JarLauncher"]
+# Set JVM options as environment variable
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -Djava.security.egd=file:/dev/./urandom"
+
+# Run the application
+ENTRYPOINT [ "sh", "-c", "java $JAVA_OPTS -jar app.jar" ]
